@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block body %}
+<h1>Your claims</h1><p>Signed in as {{ user }}.</p>
+<table><tr><th>#</th><th>Merchant</th><th>Amount</th><th>Status</th></tr>
+{% for c in claims %}<tr><td><a href="/claim/{{ c['id'] }}">{{ c['id'] }}</a></td>
+<td>{{ c['merchant'] }}</td><td>&euro;{{ c['amount'] }}</td><td>{{ c['status'] }}</td></tr>{% endfor %}
+</table>
+<h2>New claim</h2>
+<form method="post" action="/claim/new">
+  <p><input name="merchant" placeholder="merchant"> <input name="amount" placeholder="amount"></p>
+  <p><textarea name="note" placeholder="note"></textarea></p>
+  <p><button>Submit</button></p>
+</form>{% endblock %}
