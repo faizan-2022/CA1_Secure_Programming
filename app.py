@@ -16,6 +16,7 @@ import subprocess
 import csv
 import io
 import re
+import json
 
 from flask import (Flask, g, redirect, render_template, request, session,
                    send_file, send_from_directory, url_for, Response)
@@ -168,9 +169,42 @@ def export():
 
 @app.route("/prefs", methods=["POST"])
 def prefs():
+    # Require authentication
+    if "uid" not in session:
+        return redirect(url_for("login"))
+
     blob = request.form.get("prefs", "")
-    data = pickle.loads(bytes.fromhex(blob))
+
+    # Limit the size of submitted preferences
+    if len(blob) > 4096:
+        return "Preferences data too large", 413
+
+    try:
+        # Parse JSON instead of unsafe pickle data
+        data = json.loads(blob)
+    except (json.JSONDecodeError, TypeError):
+        return "Invalid preferences format", 400
+
+    # Only accept JSON objects
+    if not isinstance(data, dict):
+        return "Preferences must be a JSON object", 400
+
+    # Validate permitted preference fields
+    allowed_preferences = {
+        "theme": {"light", "dark"},
+        "language": {"en", "fr", "de"}
+    }
+
+    if not all(
+        key in allowed_preferences
+        and isinstance(value, str)
+        and value in allowed_preferences[key]
+        for key, value in data.items()
+    ):
+        return "Invalid preference values", 400
+
     session["prefs"] = data
+
     return redirect(url_for("index"))
 
 
