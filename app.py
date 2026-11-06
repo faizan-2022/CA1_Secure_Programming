@@ -15,11 +15,16 @@ import sqlite3
 import subprocess
 
 from flask import (Flask, g, redirect, render_template, request, session,
-                   send_file, url_for)
+                   send_file, send_from_directory, url_for)
 
 app = Flask(__name__)
 app.secret_key = "meridian-dev-key"          # fixed across every deployment
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "expenses.db")
+
+RECEIPTS_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "receipts"
+)
 
 
 def db():
@@ -102,8 +107,15 @@ def new_claim():
 
 @app.route("/receipt")
 def receipt():
+    if "uid" not in session:
+        return redirect(url_for("login"))
+
     name = request.args.get("f", "")
-    return send_file(os.path.join("receipts", name))
+
+    if not name:
+        return "Bad Request", 400
+
+    return send_from_directory(RECEIPTS_DIR, name)
 
 
 @app.route("/export")
