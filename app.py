@@ -13,9 +13,12 @@ import os
 import pickle
 import sqlite3
 import subprocess
+import csv
+import io
+import re
 
 from flask import (Flask, g, redirect, render_template, request, session,
-                   send_file, send_from_directory, url_for)
+                   send_file, send_from_directory, url_for, Response)
 
 app = Flask(__name__)
 app.secret_key = "meridian-dev-key"          # fixed across every deployment
@@ -120,12 +123,47 @@ def receipt():
 
 @app.route("/export")
 def export():
+    # Require authentication
+    if "uid" not in session:
+        return redirect(url_for("login"))
+
+    # Restrict exports to authorised roles
+    if session.get("role") not in ("admin", "finance"):
+        return "Forbidden", 403
+
+    # Validate the month parameter
     month = request.args.get("month", "2026-09")
-    out = "/tmp/expenses-%s.csv" % month
-    subprocess.call(
-        "sqlite3 %s '.mode csv' '.once %s' 'SELECT * FROM claims'" % (DB, out),
-        shell=True)
-    return send_file(out, as_attachment=True)
+
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month):
+        return "Invalid month format", 400
+
+    # Retrieve records directly from SQLite
+    rows = db().execute(
+        "SELECT id, user_id, merchant, amount, note, status "
+        "FROM claims ORDER BY id"
+    ).fetchall()
+
+    # Generate CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "id", "user_id", "merchant",
+        "amount", "note", "status"
+    ])
+
+    for row in rows:
+        writer.writerow(tuple(row))
+
+    # Return downloadable CSV
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+                f'attachment; filename="expenses-{month}.csv"'
+        }
+    )
 
 
 @app.route("/prefs", methods=["POST"])
