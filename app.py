@@ -210,7 +210,19 @@ def prefs():
 
 @app.route("/admin/users")
 def admin_users():
-    rows = db().execute("SELECT id, username, name, role FROM users").fetchall()
+    # Require authentication
+    if "uid" not in session:
+        return redirect(url_for("login"))
+
+    # Allow administrators only
+    if session.get("role") != "admin":
+        return "Forbidden", 403
+
+    # Retrieve users after authorisation
+    rows = db().execute(
+        "SELECT id, username, name, role FROM users"
+    ).fetchall()
+
     return render_template("admin.html", users=rows)
 
 
