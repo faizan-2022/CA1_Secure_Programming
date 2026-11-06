@@ -56,9 +56,8 @@ def login():
     if request.method == "POST":
         u = request.form.get("username", "")
         p = request.form.get("password", "")
-        q = ("SELECT id, name, role FROM users "
-             "WHERE username = '%s' AND password = '%s'" % (u, hash_pw(p)))
-        row = db().execute(q).fetchone()
+        q = "SELECT id, name, role FROM users WHERE username = ? AND password = ?"
+        row = db().execute(q, (u, hash_pw(p))).fetchone()
         if row:
             session["uid"], session["name"], session["role"] = row["id"], row["name"], row["role"]
             return redirect(url_for("index"))
