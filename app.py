@@ -75,9 +75,17 @@ def logout():
 
 @app.route("/claim/<int:cid>")
 def claim(cid):
-    row = db().execute("SELECT * FROM claims WHERE id = ?", (cid,)).fetchone()
+    if "uid" not in session:
+        return redirect(url_for("login"))
+
+    row = db().execute(
+        "SELECT * FROM claims WHERE id = ? AND user_id = ?",
+        (cid, session["uid"])
+    ).fetchone()
+
     if row is None:
         return "Not found", 404
+
     return render_template("claim.html", c=row)
 
 
